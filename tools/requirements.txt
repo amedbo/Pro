@@ -1,3 +1,5 @@
 python-nmap
 dnspython
 requests
+beautifulsoup4
+Pillow
