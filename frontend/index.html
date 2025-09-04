@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybersentinel - Threat Intelligence Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: #f4f6f8; color: #333; }
+        header { background-color: #2c3e50; color: white; padding: 1rem 2rem; }
+        header h1 { margin: 0; }
+        main { padding: 2rem; display: flex; gap: 2rem; }
+        .container { background-color: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        #threat-submission-container { flex: 1; }
+        #threat-list-container { flex: 2; }
+        h2 { border-bottom: 2px solid #3498db; padding-bottom: 0.5rem; margin-top: 0; }
+        form { display: flex; flex-direction: column; gap: 1rem; }
+        input, textarea, button { font-size: 1rem; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc; }
+        textarea { resize: vertical; min-height: 100px; }
+        button { background-color: #3498db; color: white; border: none; cursor: pointer; transition: background-color 0.3s; }
+        button:hover { background-color: #2980b9; }
+        #threat-list { list-style-type: none; padding: 0; }
+        #threat-list li { padding: 0.75rem; border-bottom: 1px solid #eee; cursor: pointer; transition: background-color 0.3s; }
+        #threat-list li:hover { background-color: #ecf0f1; }
+        #threat-list li.selected { background-color: #e2e8f0; }
+        #threat-details-container h3 { margin-top: 0; }
+        #indicator-list { list-style-type: none; padding: 0; margin-top: 1rem; }
+        #indicator-list li { background-color: #ecf0f1; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-family: "Courier New", Courier, monospace; }
+        .indicator-type { font-weight: bold; color: #2980b9; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Cybersentinel - Threat Intelligence Dashboard</h1>
+    </header>
+
+    <main>
+        <div id="threat-submission-container" class="container">
+            <h2>Submit New Threat Intelligence</h2>
+            <form id="threat-form">
+                <input type="text" id="threat-name" placeholder="Threat Name (e.g., Conti Ransomware)" required>
+                <textarea id="threat-description" placeholder="Description (include any IOCs like IPs, domains, hashes... the AI will find them!)"></textarea>
+                <button type="submit">Submit and Analyze</button>
+            </form>
+        </div>
+
+        <div id="threat-list-container" class="container">
+            <h2>Threats</h2>
+            <ul id="threat-list">
+                <!-- Threats will be populated here by JavaScript -->
+            </ul>
+        </div>
+
+        <div id="threat-details-container" class="container">
+            <h2>Threat Details</h2>
+            <div id="threat-details-content">
+                <p>Select a threat from the list to see details.</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const API_URL = 'http://127.0.0.1:8000';
+            const threatList = document.getElementById('threat-list');
+            const threatDetailsContent = document.getElementById('threat-details-content');
+            const threatForm = document.getElementById('threat-form');
+            const threatNameInput = document.getElementById('threat-name');
+            const threatDescriptionInput = document.getElementById('threat-description');
+
+            let threats = [];
+            let selectedThreatId = null;
+
+            // --- Data Fetching and Rendering ---
+
+            async function fetchThreats() {
+                try {
+                    const response = await fetch(`${API_URL}/threats/`);
+                    if (!response.ok) throw new Error('Failed to fetch threats');
+                    threats = await response.json();
+                    renderThreatList();
+                    renderThreatDetails();
+                } catch (error) {
+                    console.error('Error fetching threats:', error);
+                    threatList.innerHTML = '<li>Error loading threats. Is the backend server running?</li>';
+                }
+            }
+
+            function renderThreatList() {
+                threatList.innerHTML = '';
+                if (threats.length === 0) {
+                    threatList.innerHTML = '<li>No threats found.</li>';
+                    return;
+                }
+                threats.forEach(threat => {
+                    const li = document.createElement('li');
+                    li.textContent = `${threat.name} (${threat.threat_class})`;
+                    li.dataset.id = threat.id;
+                    if (threat.id === selectedThreatId) {
+                        li.classList.add('selected');
+                    }
+                    threatList.appendChild(li);
+                });
+            }
+
+            function renderThreatDetails() {
+                const threat = threats.find(t => t.id === selectedThreatId);
+                if (!threat) {
+                    threatDetailsContent.innerHTML = '<p>Select a threat from the list to see details.</p>';
+                    return;
+                }
+
+                let indicatorsHTML = '<h4>Indicators of Compromise</h4>';
+                if (threat.indicators.length > 0) {
+                    indicatorsHTML += '<ul id="indicator-list">';
+                    threat.indicators.forEach(ioc => {
+                        indicatorsHTML += `<li><span class="indicator-type">${ioc.indicator_type}:</span> ${ioc.value}</li>`;
+                    });
+                    indicatorsHTML += '</ul>';
+                } else {
+                    indicatorsHTML += '<p>No indicators found for this threat.</p>';
+                }
+
+                threatDetailsContent.innerHTML = `
+                    <h3>${threat.name}</h3>
+                    <p><strong>Class:</strong> ${threat.threat_class}</p>
+                    <p><strong>Description:</strong> ${threat.description || 'N/A'}</p>
+                    ${indicatorsHTML}
+                `;
+            }
+
+            // --- Event Handlers ---
+
+            threatList.addEventListener('click', (event) => {
+                if (event.target.tagName === 'LI') {
+                    selectedThreatId = parseInt(event.target.dataset.id);
+                    renderThreatList(); // Re-render to show selection
+                    renderThreatDetails();
+                }
+            });
+
+            threatForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const name = threatNameInput.value.trim();
+                const description = threatDescriptionInput.value.trim();
+
+                if (!name) {
+                    alert('Threat name is required.');
+                    return;
+                }
+
+                const payload = { name, description };
+
+                try {
+                    const response = await fetch(`${API_URL}/threats/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || 'Failed to create threat');
+                    }
+
+                    // Clear form and refresh data
+                    threatNameInput.value = '';
+                    threatDescriptionInput.value = '';
+                    await fetchThreats();
+
+                    // Select the newly created threat
+                    const newThreat = await response.json();
+                    selectedThreatId = newThreat.id;
+                    renderThreatList();
+                    renderThreatDetails();
+
+
+                } catch (error) {
+                    console.error('Error creating threat:', error);
+                    alert(`Error: ${error.message}`);
+                }
+            });
+
+            // --- Initial Load ---
+            fetchThreats();
+        });
+    </script>
+</body>
+</html>
