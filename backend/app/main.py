@@ -10,7 +10,7 @@ from .database import SessionLocal, engine
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Project Cybersentinel API",
+    title="Amedbo API",
     description="API for the Proactive Threat Intelligence Platform",
     version="0.1.0"
 )
@@ -25,7 +25,7 @@ def get_db():
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the Cybersentinel API"}
+    return {"message": "Welcome to the Amedbo API"}
 
 # Placeholder for future endpoints to be developed in Step 2
 @app.post("/threats/", response_model=schemas.Threat)

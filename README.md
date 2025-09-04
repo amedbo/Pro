@@ -1,4 +1,4 @@
-# Project Cybersentinel - Proactive Threat Intelligence Platform
+# Amedbo - Proactive Threat Intelligence Platform
 
 This project is a proof-of-concept for a Proactive and Integrated Threat Intelligence Unit, as envisioned by the user. It provides the core software components for collecting, analyzing, and managing cybersecurity threat intelligence. The platform is built with a powerful Python backend using FastAPI and a simple, interactive frontend.
 
