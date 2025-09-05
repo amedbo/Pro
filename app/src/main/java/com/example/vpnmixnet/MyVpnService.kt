@@ -17,13 +17,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class MyVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
     private var backend: GoBackend? = null
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     companion object {
+        const val BROADCAST_ACTION_STATE = "com.example.vpnmixnet.VPN_STATE"
+        const val EXTRA_VPN_STATE = "vpn_state"
         private const val NOTIFICATION_CHANNEL_ID = "VpnMixnetChannel"
     }
 
@@ -32,8 +36,10 @@ class MyVpnService : VpnService() {
         val notification = createNotification()
         startForeground(1, notification)
 
+        sendVpnStateBroadcast(VpnState.CONNECTING)
+
         // Start the VPN connection in a background coroutine
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             startVpnTunnel()
         }
 
@@ -42,8 +48,15 @@ class MyVpnService : VpnService() {
 
     private suspend fun startVpnTunnel() {
         try {
-            // STEP 1: Create the WireGuard configuration
-            val wgConfig = createWireGuardConfig()
+            // STEP 1: Load the WireGuard configuration from storage
+            val config = VpnConfigStore.getConfig(this)
+            if (config.endpoint.isBlank() || config.clientPrivateKey.isBlank() || config.serverPublicKey.isBlank()) {
+                // Config is missing, stop the service
+                sendVpnStateBroadcast(VpnState.ERROR)
+                stopVpn()
+                return
+            }
+            val wgConfig = createWireGuardConfig(config)
 
             // STEP 2: Create the backend
             // Using GoBackend as it's the userspace implementation, robust for all phones.
@@ -61,27 +74,26 @@ class MyVpnService : VpnService() {
             withContext(Dispatchers.Main) {
                 vpnInterface = builder.establish()
                 backend!!.setTunnelState(tunnelName, com.wireguard.android.backend.Tunnel.State.UP)
+                sendVpnStateBroadcast(VpnState.CONNECTED)
             }
 
         } catch (e: Exception) {
             // Handle exceptions (e.g., logging)
             e.printStackTrace()
+            sendVpnStateBroadcast(VpnState.ERROR)
             stopVpn()
         }
     }
 
-    private fun createWireGuardConfig(): Config {
+    private fun createWireGuardConfig(config: VpnConfig): Config {
         val anInterface = Interface.Builder()
             .addAddress("10.0.0.2/32")
-            // This is the key we generated on the server for the client
-            .setPrivateKey("WP/Ed+zFOTIvJRM70F2Ne6ksmWeHttvAC1vIuhb1Eks=")
+            .setPrivateKey(config.clientPrivateKey)
             .build()
 
         val aPeer = Peer.Builder()
-            // This is the server's public key
-            .setPublicKey("Y+HjmQt7ESeTfqVO3V2HSD66Cinb9HqEOZCCH3W7VQs=")
-            // IMPORTANT: Replace with your server's public IP address and port
-            .setEndpoint(InetEndpoint.parse("YOUR_SERVER_IP:51820"))
+            .setPublicKey(config.serverPublicKey)
+            .setEndpoint(InetEndpoint.parse(config.endpoint))
             .addAllowedIp("0.0.0.0/0") // We want to route all traffic through this peer
             .build()
 
@@ -131,6 +143,14 @@ class MyVpnService : VpnService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        sendVpnStateBroadcast(VpnState.DISCONNECTED)
         stopVpn()
+    }
+
+    private fun sendVpnStateBroadcast(state: VpnState) {
+        val intent = Intent(BROADCAST_ACTION_STATE).apply {
+            putExtra(EXTRA_VPN_STATE, state.name)
+        }
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
     }
 }

@@ -5,4 +5,16 @@
     <string name="status_disconnected">Status: Disconnected</string>
     <string name="status_connected">Status: Connected</string>
     <string name="status_connecting">Status: Connecting...</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_privacy_policy">Privacy Policy</string>
+    <string name="settings_title">Settings</string>
+    <string name="server_endpoint_label">Server Endpoint (IP:Port)</string>
+    <string name="server_endpoint_hint">e.g., 123.45.67.89:51820</string>
+    <string name="client_private_key_label">Client Private Key</string>
+    <string name="client_private_key_hint">Your client\'s private key</string>
+    <string name="server_public_key_label">Server Public Key</string>
+    <string name="server_public_key_hint">Your server\'s public key</string>
+    <string name="save_button_text">Save</string>
+    <string name="settings_saved_toast">Settings saved</string>
+    <string name="status_error">Error connecting. Check settings.</string>
 </resources>
