@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">VpnMixnet</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="status_disconnected">Status: Disconnected</string>
+    <string name="status_connected">Status: Connected</string>
+    <string name="status_connecting">Status: Connecting...</string>
+</resources>
