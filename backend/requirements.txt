@@ -6,3 +6,4 @@ transformers
 torch
 sentencepiece
 pytest
+tf-keras

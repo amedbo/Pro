@@ -1,9 +1,0 @@
-# Core AI and Data Science Libraries
-tensorflow
-scikit-learn
-numpy
-pandas
-
-# API Framework for Integration
-fastapi
-uvicorn[standard]
